@@ -1,2 +1,2 @@
-# tf-var-attention
-Variational Attention for Sequence to Sequence Models
+# Variational Attention
+Implemtation of 'Variational Attention for Sequence to Sequence Models' in tensorflow.

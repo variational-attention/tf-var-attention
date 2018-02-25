@@ -1,1 +1,1 @@
-BLEU score pickle file saved in this directory.
+BLEU score pickle files will be saved in this directory.

@@ -1,0 +1,11 @@
+*.pyc
+.ipynb_checkpoints
+.idea
+w2vmodel_dialogue.pkl              
+w2vmodel_dialogue.pkl.wv.syn0.npy  
+w2vmodel_qgen.pkl.syn1neg.npy
+w2vmodel_dialogue.pkl.syn1neg.npy  
+w2vmodel_qgen.pkl                  
+w2vmodel_qgen.pkl.wv.syn0.npy
+events.*
+*.ckpt.*

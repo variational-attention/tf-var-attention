@@ -92,14 +92,14 @@ class VarSeq2SeqDetAttnModel(object):
         with tf.name_scope("word_embeddings"):
             self.encoder_embeddings = tf.Variable(
                 initial_value=np.array(self.encoder_embeddings_matrix, dtype=np.float32),
-                dtype=tf.float32, trainable=True)
+                dtype=tf.float32, trainable=False)
             self.enc_embed_input = tf.nn.embedding_lookup(self.encoder_embeddings, self.input_data)
-            self.enc_embed_input = tf.nn.dropout(self.enc_embed_input, keep_prob=self.keep_prob)
+            # self.enc_embed_input = tf.nn.dropout(self.enc_embed_input, keep_prob=self.keep_prob)
 
             with tf.name_scope("decoder_inputs"):
                 self.decoder_embeddings = tf.Variable(
                     initial_value=np.array(self.decoder_embeddings_matrix, dtype=np.float32),
-                    dtype=tf.float32, trainable=True)
+                    dtype=tf.float32, trainable=False)
                 keep = tf.where(
                     tf.random_uniform([self.batch_size, self.decoder_num_tokens]) < self.word_dropout_keep_prob,
                     tf.fill([self.batch_size, self.decoder_num_tokens], True),
@@ -110,17 +110,17 @@ class VarSeq2SeqDetAttnModel(object):
                 self.dec_input = tf.concat([tf.fill([self.batch_size, 1], self.decoder_word_index['GO']), ending], 1,
                                            name='dec_input')
                 self.dec_embed_input = tf.nn.embedding_lookup(self.decoder_embeddings, self.dec_input)
-                self.dec_embed_input = tf.nn.dropout(self.dec_embed_input, keep_prob=self.keep_prob)
+                # self.dec_embed_input = tf.nn.dropout(self.dec_embed_input, keep_prob=self.keep_prob)
 
     def build_encoder(self):
         with tf.name_scope("encode"):
             for layer in range(self.num_layers):
                 with tf.variable_scope('encoder_{}'.format(layer + 1)):
                     cell_fw = tf.contrib.rnn.LayerNormBasicLSTMCell(self.lstm_hidden_units)
-                    cell_fw = tf.contrib.rnn.DropoutWrapper(cell_fw, output_keep_prob=self.keep_prob)
+                    cell_fw = tf.contrib.rnn.DropoutWrapper(cell_fw, input_keep_prob=self.keep_prob)
 
                     cell_bw = tf.contrib.rnn.LayerNormBasicLSTMCell(self.lstm_hidden_units)
-                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell_bw, output_keep_prob=self.keep_prob)
+                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell_bw, input_keep_prob=self.keep_prob)
 
                     self.enc_output, self.enc_state = tf.nn.bidirectional_dynamic_rnn(cell_fw,
                                                                                       cell_bw,
@@ -131,8 +131,6 @@ class VarSeq2SeqDetAttnModel(object):
             # Join outputs since we are using a bidirectional RNN
             self.h_N = tf.concat([self.enc_state[0][1], self.enc_state[1][1]], axis=-1,
                                  name='h_N')  # Concatenated h from the fw and bw LSTMs
-            self.c_N = tf.concat([self.enc_state[0][0], self.enc_state[1][0]], axis=-1,
-                                 name='c_N')  # Concatenated c from the fw and bw LSTMs
             self.enc_outputs = tf.concat([self.enc_output[0], self.enc_output[1]], axis=-1, name='encoder_outputs')
 
     def build_latent_space(self):
@@ -163,7 +161,7 @@ class VarSeq2SeqDetAttnModel(object):
             for layer in range(self.num_layers):
                 with tf.variable_scope('decoder_{}'.format(layer + 1)):
                     dec_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(2 * self.lstm_hidden_units)
-                    dec_cell = tf.contrib.rnn.DropoutWrapper(dec_cell, output_keep_prob=self.keep_prob)
+                    dec_cell = tf.contrib.rnn.DropoutWrapper(dec_cell, input_keep_prob=self.keep_prob)
 
             self.output_layer = Dense(self.decoder_vocab_size)
 
@@ -218,32 +216,34 @@ class VarSeq2SeqDetAttnModel(object):
                 self.inference_logits = tf.identity(self.inference_logits.sample_id, name='predictions')
 
     def loss(self):
-        self.kl_loss = self.calculate_kl_loss()
-        self.kl_loss = tf.scalar_mul(self.lambda_coeff, self.kl_loss)
+        with tf.name_scope('losses'):
+            self.kl_loss = self.calculate_kl_loss()
+            self.kl_loss = tf.scalar_mul(self.lambda_coeff, self.kl_loss)
 
-        # Create the weights for sequence_loss
-        masks = tf.sequence_mask(self.target_sentence_length, self.decoder_num_tokens, dtype=tf.float32, name='masks')
+            # Create the weights for sequence_loss
+            masks = tf.sequence_mask(self.target_sentence_length, self.decoder_num_tokens, dtype=tf.float32, name='masks')
 
-        self.xent_loss = tf.contrib.seq2seq.sequence_loss(
-            self.training_logits,
-            self.target_data,
-            weights=masks,
-            average_across_batch=False)
+            self.xent_loss = tf.contrib.seq2seq.sequence_loss(
+                self.training_logits,
+                self.target_data,
+                weights=masks,
+                average_across_batch=False)
 
-        # L2-Regularization
-        self.var_list = tf.trainable_variables()
-        self.lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in self.var_list if 'bias' not in v.name]) * 0.001
+            # L2-Regularization
+            self.var_list = tf.trainable_variables()
+            self.lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in self.var_list if 'bias' not in v.name]) * 0.001
 
-        self.cost = tf.reduce_sum(self.xent_loss + self.kl_loss) + self.lossL2
+            self.cost = tf.reduce_sum(self.xent_loss + self.kl_loss) + self.lossL2
 
     def optimize(self):
         # Optimizer
-        optimizer = tf.train.AdamOptimizer(self.lr)
+        with tf.name_scope('optimization'):
+            optimizer = tf.train.AdamOptimizer(self.lr)
 
-        # Gradient Clipping
-        gradients = optimizer.compute_gradients(self.cost, var_list=self.var_list)
-        capped_gradients = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in gradients if grad is not None]
-        self.train_op = optimizer.apply_gradients(capped_gradients)
+            # Gradient Clipping
+            gradients = optimizer.compute_gradients(self.cost, var_list=self.var_list)
+            capped_gradients = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in gradients if grad is not None]
+            self.train_op = optimizer.apply_gradients(capped_gradients)
 
     def summary(self):
         with tf.name_scope('summaries'):
@@ -437,6 +437,6 @@ class VarSeq2SeqDetAttnModel(object):
                 uni_diversity.append(uni / len(x_test))
                 bi_diversity.append(bi / len(x_test))
 
-        print('Entropy = {:>.2f} | Distinct-1 = {:>.2f} | Distinct-2 = {:>.2f}'.format(np.mean(entropy_list),
+        print('Entropy = {:>.3f} | Distinct-1 = {:>.3f} | Distinct-2 = {:>.3f}'.format(np.mean(entropy_list),
                                                                                        np.mean(uni_diversity),
                                                                                        np.mean(bi_diversity)))

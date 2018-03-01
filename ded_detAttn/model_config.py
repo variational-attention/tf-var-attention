@@ -12,7 +12,7 @@ config = dict(
 
     dropout_keep_prob = 0.8, # Dropout keep probability
     initial_learning_rate = 0.005, # Initial learning rate
-    learning_rate_decay = 0.95, # Learning rate decay
+    learning_rate_decay = 0.75, # Learning rate decay
     min_learning_rate = 0.00001, # Minimum learning rate
 
     batch_size = 100, # Batch size

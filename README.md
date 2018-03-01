@@ -1,5 +1,5 @@
 # Variational Attention
-![](https://img.shields.io/badge/python-3.6-brightgreen.svg) ![](https://img.shields.io/badge/tensorflow-1.3.0-yellowgreen.svg)
+![](https://img.shields.io/badge/python-3.6-brightgreen.svg) ![](https://img.shields.io/badge/tensorflow-1.3.0-orange.svg)
 Implentation of 'Variational Attention for Sequence to Sequence Models' in tensorflow.
 
 ## Overview

@@ -12,17 +12,17 @@ config = dict(
 
     dropout_keep_prob = 0.8, # Dropout keep probability
     initial_learning_rate = 0.005, # Initial learning rate
-    learning_rate_decay = 0.95, # Learning rate decay
+    learning_rate_decay = 0.75, # Learning rate decay
     min_learning_rate = 0.00001, # Minimum learning rate
     
     latent_dim = 100, # Dimension of z-latent space
     word_dropout_keep_probability = 0.75, # 1.0 - Word dropout rate for the decoder
     z_temp = 1.0, # Sampling temperature to be multiplied with the standard deviation
     attention_temp = 1.0, # Sampling temperature for the attention/context vector
-    use_hmean = False, # Whether to use N(h_mean, I) or N(0, I) as the prior
+    use_hmean = True, # Whether to use N(h_mean, I) or N(0, I) as the prior
     gamma_val = 0.1, # Coefficient of the attention KL loss
 
-    batch_size = 100, # Batch size
+    batch_size = 100, # Batch size # 128 for dialogue
     n_epochs = 3, # Number of epochs
 
     logs_dir = 'summary_logs/var-seq2seq-var-attn', # Path to save summary information for Tensorboard

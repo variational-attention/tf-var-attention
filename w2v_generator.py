@@ -48,8 +48,8 @@ def create_w2v(sentences):
     sentences = [word_tokenize(s) for s in sentences]
     w2v_model = gensim.models.Word2Vec(sentences,
                                        size=300,
-                                       min_count=2,
-                                       iter=20)
+                                       min_count=1,
+                                       iter=50)
     w2v_model.save(W2V_DIR + 'w2vmodel_' + args['dataset'] + '.pkl')
 
 

@@ -346,6 +346,10 @@ class VarSeq2SeqVarAttnModel(object):
         # Calculate BLEU on validation data
         hypotheses_val = []
         references_val = []
+        symbol=[]
+        if self.config['experiment'] == 'qgen':
+            symbol.append('?')
+            
         for batch_i, (input_batch, output_batch, source_sent_lengths, tar_sent_lengths) in enumerate(
                 data_utils.get_batches(x_val, y_val, self.batch_size)):
             answer_logits = sess.run(self.inference_logits,
@@ -359,7 +363,7 @@ class VarSeq2SeqVarAttnModel(object):
             for k, pred in enumerate(answer_logits):
                 hypotheses_val.append(
                     word_tokenize(
-                        " ".join([self.decoder_idx_word[i] for i in pred if i not in [self.pad, -1, self.eos]])))
+                        " ".join([self.decoder_idx_word[i] for i in pred if i not in [self.pad, -1, self.eos]])) + symbol)
                 references_val.append([word_tokenize(true_val[batch_i * self.batch_size + k])])
 
         bleu_scores = eval_utils.calculate_bleu_scores(references_val, hypotheses_val)
@@ -368,11 +372,14 @@ class VarSeq2SeqVarAttnModel(object):
         self.epoch_bleu_score_val['3'].append(bleu_scores[2])
         self.epoch_bleu_score_val['4'].append(bleu_scores[3])
 
-    def predict(self, checkpoint, x_test, y_test, true_test, symbol=[]):
+    def predict(self, checkpoint, x_test, y_test, true_test):
         pred_logits = []
         hypotheses_test = []
         references_test = []
-
+        symbol=[]
+        if self.config['experiment'] == 'qgen':
+            symbol.append('?')
+            
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
@@ -401,7 +408,10 @@ class VarSeq2SeqVarAttnModel(object):
 
         return pred_logits
 
-    def show_output_sentences(self, preds, y_test, input_test, true_test, symbol=[]):
+    def show_output_sentences(self, preds, y_test, input_test, true_test):
+        symbol=[]
+        if self.config['experiment'] == 'qgen':
+            symbol.append('?')
         for k, (pred, actual) in enumerate(zip(preds, y_test)):
             print('Input:      {}'.format(input_test[k].strip()))
             print('Actual:     {}'.format(true_test[k].strip()))
